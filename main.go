@@ -1,6 +1,8 @@
 package main
 
 import (
+	"html/template"
+	"io"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -12,12 +14,20 @@ func main() {
 	e := echo.New()
 	e.HideBanner = true
 
+	// html templating
+	t := &Template{
+		templates: template.Must(template.ParseGlob("public/views/*.html")),
+	}
+
+	// echo renderer
+	e.Renderer = t
+
 	// middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	// hello world route
-	e.GET("/", handleHelloWorld)
+	// index route
+	e.GET("/", index)
 
 	// health check route
 	e.GET("/health", handleHealthCheck)
@@ -26,9 +36,19 @@ func main() {
 	e.Logger.Fatal(e.Start(":8000"))
 }
 
-// hello world handler
-func handleHelloWorld(c echo.Context) error {
-	return c.String(http.StatusOK, "Hello World!")
+// implement echo.Renderer interface
+type Template struct {
+	templates *template.Template
+}
+
+// implement echo.Renderer interface
+func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	return t.templates.ExecuteTemplate(w, name, data)
+}
+
+// index handler
+func index(c echo.Context) error {
+	return c.Render(http.StatusOK, "index", "World")
 }
 
 // health check handler
